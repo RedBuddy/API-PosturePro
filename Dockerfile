@@ -26,4 +26,4 @@ COPY . .
 
 # Expose port and run with gunicorn
 EXPOSE 5000
-CMD ["sh","-c","gunicorn -k gthread -w 2 -t 300 -b 0.0.0.0:${PORT:-5000} main:app"]
+CMD ["sh","-c","gunicorn -k gthread --threads 4 -w 1 -t 300 -b 0.0.0.0:${PORT:-5000} main:app"]

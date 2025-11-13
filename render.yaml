@@ -1,15 +1,11 @@
 services:
   - type: web
     name: test-mediapipe
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -k gthread -w 2 -t 300 -b 0.0.0.0:$PORT main:app
+    env: docker
     autoDeploy: true
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: SECRET_KEY
-        value: change-me
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: FRONTEND_URL
@@ -22,3 +18,5 @@ services:
         sync: false
       - key: SMTP_PASS
         sync: false
+      - key: ANALYSIS_CACHE_TTL
+        value: "600"
