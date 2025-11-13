@@ -1,0 +1,38 @@
+RECOMENDACIONES PARA GRABACIÓN DE VIDEO DE EJERCICIOS
+
+1. GENERALES
+- Iluminación uniforme, sin sombras fuertes.
+- Fondo liso y contrastante con la ropa.
+- Ropa ajustada, evitar colores similares al fondo.
+- Cámara estable (trípode recomendado), calidad mínima 720p y 30 FPS.
+- Capturar el cuerpo completo y el rango de movimiento.
+- Distancia suficiente para ver de pies a cabeza (sentadilla/peso muerto) o el brazo completo (press banca).
+
+2. SENTADILLA
+- Cámara lateral (perfil) para ver ángulos de rodilla y espalda.
+- Ángulo de rodilla óptimo: entre 70° y 130°.
+	- Si baja de 70°: "Demasiada profundidad".
+	- Si supera 130° en fase bajando: "Baja más la sentadilla".
+- Espalda: mantener < 45° respecto a la vertical.
+	- Si supera 45°: "Mantén la espalda recta".
+- Rodillas alineadas con tobillos (± 50px de tolerancia).
+	- Rodillas muy adelante del tobillo: error crítico.
+
+3. PESO MUERTO
+- Cámara lateral obligatoria para medir inclinación de espalda.
+- Espalda: mantener < 20° respecto a la vertical.
+	- Si supera 20°: "Mantén la espalda recta".
+- Capturar desde hombros hasta caderas claramente.
+- Evitar ropa holgada que oculte la postura.
+
+4. PRESS DE BANCA
+- Cámara lateral, enfocando el brazo que se analiza.
+- Usar mancuernas en vez de barra con discos grandes para evitar que los discos tapen la vista de codo y muñeca.
+- Ángulo de codo óptimo: entre 60° y 80°.
+	- < 60°: "Profundidad adecuada".
+	- 60° - 80°: "Puedes bajar más".
+- Persona acostada de lado hacia la cámara, brazo visible en todo momento.
+
+5. DURACIÓN Y FLUJO
+- Incluir preparación, ejecución y finalización del ejercicio en el video.
+- No cortar el video antes de terminar el movimiento.

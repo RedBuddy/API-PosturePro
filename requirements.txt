@@ -1,0 +1,11 @@
+flask
+flask-cors
+werkzeug
+opencv-python-headless
+mediapipe
+numpy
+flask-sqlalchemy
+cryptography
+psycopg[binary]
+gunicorn
+python-dotenv
