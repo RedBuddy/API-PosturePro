@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  api:
+    build: .
+    container_name: posturepro
+    # Usar 1 worker para que la caché en memoria de /media funcione en un solo proceso
+    command: sh -c "gunicorn -k gthread --threads 4 -w 1 -t 300 -b 0.0.0.0:${PORT:-5000} main:app"
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - PORT=5000
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
+      - ANALYSIS_CACHE_TTL=${ANALYSIS_CACHE_TTL:-600}
+      - MAX_CONTENT_LENGTH=${MAX_CONTENT_LENGTH:-104857600}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - MEDIA_DIR=${MEDIA_DIR:-media}
+    restart: unless-stopped

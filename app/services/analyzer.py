@@ -5,6 +5,7 @@ import numpy as np
 import mediapipe as mp
 import math
 from collections import deque  # suavizado por pierna
+import subprocess
 
 # Silencia logs verbosos de MediaPipe
 try:
@@ -246,7 +247,46 @@ class AnalizadorEjercicios:
         # NUEVO: recomendaciones personalizadas
         stats['recomendaciones'] = self.generar_recomendaciones(stats, tipo_ejercicio)
 
+        # Transcodificar a H.264 (MP4) para compatibilidad de navegador si es posible
+        try:
+            final_path = self._ensure_h264_mp4(output_path, fps)
+            if final_path and os.path.exists(final_path):
+                # Si transcodificó, eliminar el archivo anterior
+                if os.path.abspath(final_path) != os.path.abspath(output_path):
+                    try:
+                        os.unlink(output_path)
+                    except Exception:
+                        pass
+                output_path = final_path
+        except Exception:
+            # Si falla, devolver el archivo original
+            pass
+
         return output_path, stats
+
+    def _ensure_h264_mp4(self, src_path, fps):
+        """
+        Intenta transcodificar el archivo src a H.264 (avc1) en MP4 usando ffmpeg CLI,
+        para garantizar compatibilidad en navegadores. Devuelve la ruta del MP4 o None si falla.
+        """
+        try:
+            # Si ya es .mp4 podríamos aun así no ser H.264; forzar reencode
+            base, _ = os.path.splitext(src_path)
+            dst_path = base + "_h264.mp4"
+            cmd = [
+                'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
+                '-i', src_path,
+                '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '23',
+                '-movflags', '+faststart',
+                dst_path
+            ]
+            subprocess.run(cmd, check=True)
+            # Verificar que el archivo exista y no esté vacío
+            if os.path.exists(dst_path) and os.path.getsize(dst_path) > 0:
+                return dst_path
+        except Exception:
+            return None
+        return None
     
     def agregar_overlay_feedback(self, frame, feedback_data, repeticiones, timestamp, estado):
         height, width = frame.shape[:2]

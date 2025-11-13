@@ -1,6 +1,6 @@
 import time
 import io
-from flask import Blueprint, send_from_directory, current_app, send_file, abort
+from flask import Blueprint, abort, request, Response
 
 media_bp = Blueprint('media', __name__)
 
@@ -26,12 +26,35 @@ def serve_media(filename):
     # Servir desde memoria si existe
     item = VIDEO_CACHE.get(filename)
     if item:
-        buf = io.BytesIO(item['bytes'])
-        buf.seek(0)
-        return send_file(buf, mimetype=item.get('mime', 'video/mp4'))
+        data = item['bytes']
+        total = len(data)
+        mime = item.get('mime', 'video/mp4')
+        range_header = request.headers.get('Range')
+        if range_header:
+            try:
+                # Example: Range: bytes=START-END
+                units, rng = range_header.strip().split('=')
+                if units != 'bytes':
+                    raise ValueError('Unsupported unit')
+                start_str, end_str = (rng.split('-') + [''])[:2]
+                start = int(start_str) if start_str else 0
+                end = int(end_str) if end_str else total - 1
+                start = max(0, min(start, total - 1))
+                end = max(start, min(end, total - 1))
+                chunk = data[start:end + 1]
+                rv = Response(chunk, 206, mimetype=mime, direct_passthrough=True)
+                rv.headers['Content-Range'] = f'bytes {start}-{end}/{total}'
+                rv.headers['Accept-Ranges'] = 'bytes'
+                rv.headers['Content-Length'] = str(len(chunk))
+                return rv
+            except Exception:
+                # Fallback to full content
+                pass
+        # Full content
+        rv = Response(data, 200, mimetype=mime, direct_passthrough=True)
+        rv.headers['Accept-Ranges'] = 'bytes'
+        rv.headers['Content-Length'] = str(total)
+        return rv
 
-    # Compatibilidad: si existe en disco, servirlo (no recomendado para analizados)
-    try:
-        return send_from_directory(current_app.config['MEDIA_DIR'], filename, mimetype='video/mp4')
-    except Exception:
-        return abort(404)
+    # Estricto: solo memoria. Si no está en caché, 404.
+    return abort(404)

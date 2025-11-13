@@ -15,7 +15,7 @@ def create_app():
     if md and not os.path.isabs(md):
         md = os.path.join(project_root, md)
     media_dir = md or os.path.join(project_root, 'media')
-    os.makedirs(media_dir, exist_ok=True)
+    # No crear el directorio en disco; se mantiene sólo por compatibilidad de config
 
     # DB URL solo desde entorno
     db_url = os.environ.get('DATABASE_URL')

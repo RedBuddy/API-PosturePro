@@ -12,7 +12,7 @@ def build_reset_link(reset_token: str) -> str:
         from flask import request
         base = FRONTEND_URL or (request.headers.get('Origin') or request.host_url.rstrip('/'))
     except Exception:
-        base = FRONTEND_URL or "http://localhost:5173"
+        base = FRONTEND_URL or "no hay url de frontend configurada"
     return f"{base}/reset-password?token={reset_token}"
 
 def send_reset_email(to_email: str, reset_token: str):

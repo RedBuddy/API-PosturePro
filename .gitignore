@@ -23,3 +23,8 @@ dist/
 .vscode/
 
 media/
+
+# Env files (keep example tracked)
+.env
+.env.*
+!.env.example
