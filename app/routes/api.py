@@ -5,6 +5,7 @@ import shutil
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 from app.services.analyzer import analyzer
+from app.routes.media import put_in_cache
 
 api_bp = Blueprint('api', __name__)
 
@@ -53,16 +54,27 @@ def api_analyze():
         # Forzar 100% al terminar
         LAST_PROGRESS = 100
 
+        # Preparar respuesta vía caché en memoria (no persistente)
         ts = int(time.time())
-        out_name = f"analyzed_{exercise_type}_{ts}.mp4"
-        final_path = os.path.join(current_app.config['MEDIA_DIR'], out_name)
-        try:
-            if os.path.abspath(output_path) != os.path.abspath(final_path):
-                os.replace(output_path, final_path)
-        except Exception:
-            shutil.copy2(output_path, final_path)
+        ext = os.path.splitext(output_path)[1] or '.mp4'
+        out_name = f"analyzed_{exercise_type}_{ts}{ext}"
+        mimetype = 'video/mp4' if ext.lower() == '.mp4' else 'video/x-msvideo'
 
-        # Limpieza
+        # Leer bytes del archivo procesado y eliminarlo
+        try:
+            with open(output_path, 'rb') as f_out:
+                video_bytes = f_out.read()
+        finally:
+            try:
+                os.unlink(output_path)
+            except Exception:
+                pass
+
+        # Cargar en caché en memoria con TTL configurable
+        ttl = int(os.environ.get('ANALYSIS_CACHE_TTL', '600'))
+        put_in_cache(out_name, video_bytes, mime=mimetype, ttl=ttl)
+
+        # Limpieza del archivo temporal de entrada
         try:
             os.unlink(tmp.name)
         except Exception:
