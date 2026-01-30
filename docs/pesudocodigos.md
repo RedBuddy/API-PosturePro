@@ -9,6 +9,7 @@ RETORNAR ANGULO
 FIN ALGORITMO
 
 3.4.2 Algoritmo de Análisis de Video Completo
+
 ALGORITMO AnalizarVideoCompleto(video, tipo_ejercicio)
 ABRIR video
 CREAR archivo temporal de salida
@@ -19,7 +20,7 @@ CONVERTIR a RGB
 DETECTAR pose con MediaPipe
 SI se detecta pose ENTONCES
 DIBUJAR landmarks
-SEGÚN tipo_ejercicio: - sentadilla → AnalizarSentadilla - peso muerto → AnalizarPesoMuerto - press banca → AnalizarPressBanca
+SEGÚN tipo_ejercicio: - sentadilla → AnalizarSentadilla - desplante → AnalizarDesplante - press banca → AnalizarPressBanca
 ACTUALIZAR repeticiones y estadísticas
 FIN SI
 GUARDAR frame en video de salida
@@ -39,13 +40,15 @@ SI rodillas desalineadas → “mantener nivel”
 RETORNAR feedback, score
 FIN ALGORITMO
 
-3.4.4 Algoritmo de Análisis de Peso Muerto
-ALGORITMO AnalizarPesoMuerto(landmarks)
-CALCULAR angulo_espalda ← CalcularAnguloEspalda(landmarks)
+3.4.4 Algoritmo de Análisis de Desplante
+ALGORITMO AnalizarDesplante(landmarks)
+CALCULAR angulo_rodilla_delantera ← CalcularAnguloRodilla(landmarks)
+CALCULAR angulo_rodilla_trasera ← CalcularAnguloRodillaTrasera(landmarks)
 score ← 100
-SI angulo_espalda > 35 → “espalda muy curvada”
-SI angulo_espalda entre 25 y 35 → “mejorar postura”
-SI hombros no alineados con caderas → “extiende caderas”
+SI angulo_rodilla_delantera < 70 → "rodilla muy adelantada"
+SI angulo_rodilla_delantera > 110 → "baja más"
+SI rodilla_delantera sobrepasa tobillo → "rodilla no debe pasar el tobillo"
+SI rodilla_trasera no cerca del suelo → "baja más la rodilla trasera"
 AJUSTAR score según desviaciones
 RETORNAR feedback, score
 FIN ALGORITMO
@@ -70,15 +73,17 @@ FIN ALGORITMO
 
 """
 
-3.4.2 Algoritmo de Análisis de Peso Muerto
-Algoritmo AnalizarPesoMuerto(landmarks)
-ang_esp ← CalcularAnguloEspalda(landmarks) // respecto a la vertical en cadera
+3.4.2 Algoritmo de Análisis de Desplante
+Algoritmo AnalizarDesplante(landmarks)
+ang_rod_del ← CalcularAnguloRodillaDelantera(landmarks)
+ang_rod_tra ← CalcularAnguloRodillaTrasera(landmarks)
 score ← 100
-si ang_esp > 35 → feedback ← "Espalda muy curvada"; score -= 35
-sino si 25 < ang_esp ≤ 35 → feedback ← "Mantén la espalda recta"; score -= 25
-sino si 15 < ang_esp ≤ 25 → feedback ← "Mejora postura de espalda"; score -= 10
-sino si ang_esp ≤ 10 → score += 5
-si no hay extensión completa de caderas al final → feedback ← "Extiende caderas"; score -= 15
+si ang_rod_del < 70 → feedback ← "Rodilla muy adelantada"; score -= 30
+sino si 70 ≤ ang_rod_del < 80 → feedback ← "Cuidado con la rodilla"; score -= 15
+sino si 80 ≤ ang_rod_del ≤ 100 → feedback ← "Ángulo correcto"; score += 5
+sino si ang_rod_del > 110 → feedback ← "Baja más"; score -= 20
+si rodilla_delantera_x > tobillo_x + 50px → feedback ← "Rodilla no debe pasar el tobillo"; score -= 25
+si ang_rod_tra > 120 → feedback ← "Baja más la rodilla trasera"; score -= 15
 RETORNAR feedback, score
 FinAlgoritmo
 
@@ -120,11 +125,11 @@ si estado = "bajando" y angulo_rodilla > alto → estado ← "preparando"; repet
 RETORNAR estado, repeticiones
 FinAlgoritmo
 
-3.4.6 Algoritmo de Conteo de Repeticiones (Peso Muerto)
-Algoritmo ContarRepsPesoMuerto(angulo_espalda, estado, bajo = 25, alto = 15)
-// bajo: espalda más inclinada (inicio del tirón); alto: espalda casi vertical (bloqueo)
-si estado = "preparando" y angulo_espalda > bajo → estado ← "tirando"
-si estado = "tirando" y angulo_espalda < alto → estado ← "preparando"; repeticiones++
+3.4.6 Algoritmo de Conteo de Repeticiones (Desplante)
+Algoritmo ContarRepsDesplante(angulo_rodilla_delantera, estado, bajo = 80, alto = 140)
+// bajo: rodilla flexionada (posición baja); alto: rodilla extendida (posición alta)
+si estado = "preparando" y angulo_rodilla_delantera < bajo → estado ← "bajando"
+si estado = "bajando" y angulo_rodilla_delantera > alto → estado ← "preparando"; repeticiones++
 RETORNAR estado, repeticiones
 FinAlgoritmo
 
