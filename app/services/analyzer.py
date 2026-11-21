@@ -110,6 +110,7 @@ class AnalizadorEjercicios:
         self._lunge_min_angle = None
         self._lunge_front_side = None
         self._knee_buffers = {'izq': deque(maxlen=7), 'der': deque(maxlen=7)}
+        self._elbow_buffer = deque(maxlen=7)
         last_progress = -1
         # Antispam de errores
         last_error_msg = None
@@ -208,6 +209,17 @@ class AnalizadorEjercicios:
                                 self._lunge_front_side = None
                 elif tipo_ejercicio == 'press_banca':
                     feedback_data = self.analizar_press_banca_completo(landmarks, frame, timestamp)
+                    angulo_codo = self.calcular_angulo_codo(landmarks)
+                    if angulo_codo is not None:
+                        # Median filter: occlusion by the bar makes single-frame elbow angles spike.
+                        self._elbow_buffer.append(angulo_codo)
+                        angulo_codo_s = float(np.median(self._elbow_buffer))
+                        if estado_ejercicio == "preparando" and angulo_codo_s < 110:
+                            estado_ejercicio = "bajando"
+                        elif estado_ejercicio == "bajando" and angulo_codo_s > 150:
+                            estado_ejercicio = "preparando"
+                            repeticiones += 1
+                            stats['repeticiones'] = repeticiones
                 
                 # NUEVO: overlay + registro de metricas
                 frame = self.agregar_overlay_feedback(frame, feedback_data, repeticiones, timestamp, estado_ejercicio)
@@ -438,6 +450,14 @@ class AnalizadorEjercicios:
             return self.calcular_angulo(cadera, rodilla, tobillo)
         return None
     
+    def calcular_angulo_codo(self, landmarks):
+        hombro = [landmarks[self.HOMBROS[1]].x, landmarks[self.HOMBROS[1]].y]
+        codo   = [landmarks[self.CODOS[1]].x,   landmarks[self.CODOS[1]].y]
+        muñeca = [landmarks[self.MUÑECAS[1]].x, landmarks[self.MUÑECAS[1]].y]
+        if all(not math.isnan(p[0]) for p in [hombro, codo, muñeca]):
+            return self.calcular_angulo(hombro, codo, muñeca)
+        return None
+
     def calcular_angulo_espalda(self, landmarks):
         """
         Ángulo del torso respecto a la vertical (0° = torso recto, mayor = más inclinado).
