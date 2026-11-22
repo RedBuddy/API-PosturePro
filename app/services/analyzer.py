@@ -57,9 +57,11 @@ class AnalizadorEjercicios:
         self.CADERAS = [self.mp_pose.PoseLandmark.LEFT_HIP.value,      self.mp_pose.PoseLandmark.RIGHT_HIP.value]
         self.RODILLAS= [self.mp_pose.PoseLandmark.LEFT_KNEE.value,     self.mp_pose.PoseLandmark.RIGHT_KNEE.value]
         self.TOBILLOS= [self.mp_pose.PoseLandmark.LEFT_ANKLE.value,    self.mp_pose.PoseLandmark.RIGHT_ANKLE.value]
-    
+        # Landmark x and y are normalized by different sides of the frame; x must be scaled by width/height to get real angles.
+        self._aspect = 1.0
+
     def calcular_angulo(self, a, b, c):
-        a = np.array(a); b = np.array(b); c = np.array(c)
+        a = np.array([a[0] * self._aspect, a[1]]); b = np.array([b[0] * self._aspect, b[1]]); c = np.array([c[0] * self._aspect, c[1]])
         ba = a - b; bc = c - b
         cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
         cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
@@ -75,6 +77,7 @@ class AnalizadorEjercicios:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
+        self._aspect = width / height
 
         tmp_out = tempfile.mktemp(suffix='.mp4')
         writer, output_path, codec = _new_writer_h264_or_fallback(tmp_out, fps, (width, height))
@@ -188,7 +191,7 @@ class AnalizadorEjercicios:
                         # Umbrales
                         start_thresh = 165   # iniciar bajada
                         depth_ok     = 115   # fondo válido alcanzado
-                        top_thresh   = 172   # parte alta
+                        top_thresh   = 165   # parte alta
                         if estado_ejercicio == "preparando":
                             if front_angle_s < start_thresh and bajando_trend:
                                 estado_ejercicio = "bajando"
@@ -381,10 +384,14 @@ class AnalizadorEjercicios:
             elif angulo_espalda > 30:
                 feedback_messages.append("Mejora postura de espalda"); score -= 10; color = (0, 165, 255)
         if angulo_rodilla is not None and angulo_rodilla < 120:
-            rodilla_x = landmarks[self.RODILLAS[1]].x * w; tobillo_x = landmarks[self.TOBILLOS[1]].x * w
-            if rodilla_x < tobillo_x - 50:
+            # Offset normalized by shin length so the rule does not depend on resolution or camera distance.
+            dx = (landmarks[self.RODILLAS[1]].x - landmarks[self.TOBILLOS[1]].x) * w
+            dy = (landmarks[self.RODILLAS[1]].y - landmarks[self.TOBILLOS[1]].y) * h
+            tibia = math.hypot(dx, dy)
+            dx_norm = dx / tibia if tibia > 1e-6 else 0.0
+            if dx_norm < -0.25:
                 feedback_messages.append("Rodillas muy atras"); score -= 15; color = (0, 0, 255)
-            elif rodilla_x > tobillo_x + 100:
+            elif dx_norm > 0.5:
                 feedback_messages.append("Rodillas muy adelante!"); score -= 25; color = (0, 0, 255)
         try:
             rodilla_izq = landmarks[self.RODILLAS[0]].y * h; rodilla_der = landmarks[self.RODILLAS[1]].y * h
@@ -470,7 +477,7 @@ class AnalizadorEjercicios:
             return None
 
         # Vector torso (de cadera a hombro)
-        vx = hombro[0] - cadera[0]
+        vx = (hombro[0] - cadera[0]) * self._aspect
         vy = hombro[1] - cadera[1]   # Nota: en MediaPipe y aumenta hacia abajo
         norm = math.sqrt(vx*vx + vy*vy)
         if norm < 1e-6:
@@ -558,11 +565,11 @@ class AnalizadorEjercicios:
         izq, der = self.calcular_angulos_rodillas(landmarks)
         angulo_espalda = self.calcular_angulo_espalda(landmarks)
 
-        # Determinar pierna delantera por mayor flexión (menor ángulo)
+        # The front leg is the one with the more vertical shin; the back shin lies close to the floor and can be the more flexed knee.
         front_side = None
         front_knee = None
         if izq is not None and der is not None:
-            if izq <= der:
+            if self._shin_tilt(landmarks, 0, w, h) <= self._shin_tilt(landmarks, 1, w, h):
                 front_side, front_knee = 'izq', izq
             else:
                 front_side, front_knee = 'der', der
@@ -652,8 +659,7 @@ class AnalizadorEjercicios:
                 if tibia_px > 1e-6:
                     dx_norm = dx_px / tibia_px  # ~0 = alineado; + grande = rodilla más adelante; - grande = más atrás
 
-                    # Evaluar solo en fase baja y sin near_floor para evitar falsos positivos
-                    if estado == "bajando" and (front_knee_s is not None and front_knee_s < 140) and not near_floor:
+                    if estado == "bajando" and (front_knee_s is not None and front_knee_s < 140):
                         # Umbrales más tolerantes (válidos para desplante al frente o atrás)
                         if dx_norm > 0.45:
                             feedback_messages.append("Rodilla delantera muy adelante"); score -= 12; color = (0, 165, 255)
@@ -670,6 +676,12 @@ class AnalizadorEjercicios:
 
         main_feedback = "Buen desplante!" if not feedback_messages else feedback_messages[0]
         return {"feedback": main_feedback, "score": max(0, min(100, score)), "color": color}
+
+    def _shin_tilt(self, landmarks, side, w, h):
+        knee = landmarks[self.RODILLAS[side]]; ankle = landmarks[self.TOBILLOS[side]]
+        dx = (knee.x - ankle.x) * w; dy = (knee.y - ankle.y) * h
+        tibia = math.hypot(dx, dy)
+        return abs(dx) / tibia if tibia > 1e-6 else 1.0
 
     def calcular_angulos_rodillas(self, landmarks):
         """
